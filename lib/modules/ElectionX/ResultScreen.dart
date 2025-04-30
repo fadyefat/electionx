@@ -30,11 +30,32 @@ class ResultScreen extends StatelessWidget {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-            ...sortedVoters.map((voter) => ListTile(
-              title: Text(voter['name']),
-              trailing: Text('${voter['votes']} vote(s)'),
-            )),
-            const Spacer(),
+            Expanded( // Makes the list scrollable
+              child: ListView.builder(
+                itemCount: sortedVoters.length,
+                itemBuilder: (context, index) {
+                  final voter = sortedVoters[index];
+                  return ListTile(
+                    leading: Text(
+                      '${index + 1}', // Show 1,2,3,4 beside name
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    title: Text(
+                      voter['name'],
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    trailing: Text(
+                      '${voter['votes']} vote(s)',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
             Text(
               '🏆 Winner: ${winner['name']}',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
