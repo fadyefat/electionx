@@ -2,7 +2,7 @@ import 'dart:async'; // Import to use Timer
 import 'package:flutter/material.dart';
 import 'package:reown_appkit/reown_appkit.dart';
 
-import '../modules/ElectionX/HomeScreen.dart';
+import 'HomeScreen.dart';
 
 class WalletLoginPage extends StatefulWidget {
   const WalletLoginPage({super.key});

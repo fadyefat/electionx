@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../Network/wallet_login_page.dart';
+import '../../Network/election_service.dart';
+import 'wallet_login_page.dart';
 import 'ResultScreen.dart';
 
 class Homescreen extends StatefulWidget {
@@ -11,38 +12,93 @@ class Homescreen extends StatefulWidget {
 
 class _HomescreenState extends State<Homescreen> {
   List<Map<String, dynamic>> voters = [];
-  bool hasVoted = false; // Track if user already voted
-  int votedIndex = -1;   // Track which project the user voted for
+  bool hasVoted = false;
+  int votedIndex = -1;
+  late ElectionService electionService;
 
-  void addVoter(String name, String walletAddress) {
-    setState(() {
-      voters.add({'name': name, 'wallet': walletAddress, 'votes': 0});
+  @override
+  void initState() {
+    super.initState();
+    electionService = ElectionService();
+    electionService.init().then((_) {
+      fetchCandidatesAndVotes();
     });
   }
 
-  void showAddDialog() {
+  Future<void> fetchCandidatesAndVotes() async {
+    try {
+      final names = await electionService.getCandidates();
+      final votes = await electionService.getVotes();
+
+      if (names.isNotEmpty && votes.length == names.length) {
+        setState(() {
+          voters = List.generate(names.length, (i) {
+            return {
+              'name': names[i],
+              'wallet': '', // optional
+              'votes': votes[i],
+            };
+          });
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Failed to fetch data: $e')),
+      );
+    }
+  }
+
+  Future<bool> isOwner() async {
+    final owner = await electionService.getOwner();
+    return owner.isNotEmpty; // تحقق من وجود مالك فقط
+  }
+
+  void addVoter(String name, String walletAddress) async {
+    if (walletAddress.isNotEmpty) {
+      try {
+        final tx = await electionService.getAddCandidateTx(name, walletAddress);
+        final receipt = await electionService.sendTransaction(tx);
+        if (receipt != null) {
+          fetchCandidatesAndVotes(); // Update list after adding
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error: $e')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Please connect your wallet')),
+      );
+    }
+  }
+
+  void showAddDialog() async {
+    if (!await isOwner()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Only the owner can add candidates')),
+      );
+      return;
+    }
+
     String newName = '';
     String newWallet = '';
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Add Project'),
+          title: const Text('Add Candidate'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                decoration: const InputDecoration(hintText: 'Enter project name'),
-                onChanged: (value) {
-                  newName = value;
-                },
+                decoration: const InputDecoration(hintText: 'Enter candidate name'),
+                onChanged: (value) => newName = value,
               ),
               const SizedBox(height: 10),
               TextField(
                 decoration: const InputDecoration(hintText: 'Enter wallet address'),
-                onChanged: (value) {
-                  newWallet = value;
-                },
+                onChanged: (value) => newWallet = value,
               ),
             ],
           ),
@@ -66,17 +122,6 @@ class _HomescreenState extends State<Homescreen> {
     );
   }
 
-  void showVoteWarning(VoidCallback onConfirmed) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('⚠ You only have one chance to vote!'),
-        duration: Duration(milliseconds: 700),
-      ),
-    );
-
-    Future.delayed(const Duration(milliseconds: 700), onConfirmed);
-  }
-
   void confirmVote(int index) {
     showDialog(
       context: context,
@@ -85,23 +130,13 @@ class _HomescreenState extends State<Homescreen> {
         content: Text('Are you sure you want to vote for ${voters[index]['name']}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // No
+            onPressed: () => Navigator.pop(context),
             child: const Text('No'),
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() {
-                voters[index]['votes'] += 1;
-                hasVoted = true;
-                votedIndex = index;
-              });
-              Navigator.pop(context); // Close confirm dialog
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('✅ You voted for ${voters[index]['name']}!'),
-                  duration: const Duration(milliseconds: 700),
-                ),
-              );
+              Navigator.pop(context);
+              vote(index);
             },
             child: const Text('Yes'),
           ),
@@ -110,12 +145,41 @@ class _HomescreenState extends State<Homescreen> {
     );
   }
 
+  void vote(int index) async {
+    final candidateName = voters[index]['name'];
+    // بدلاً من عنوان المحفظة الثابت، يمكن استخدام العنوان الحقيقي هنا
+    final walletAddress = await electionService.getWalletAddress();
+
+    if (walletAddress.isNotEmpty) {
+      try {
+        final tx = await electionService.getVoteTx(candidateName, walletAddress);
+        final receipt = await electionService.sendTransaction(tx);
+        if (receipt != null) {
+          setState(() {
+            hasVoted = true;
+            votedIndex = index;
+            voters[index]['votes'] += 1;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('✅ Voted for $candidateName')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Voting failed: $e')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Please connect your wallet')),
+      );
+    }
+  }
+
   void showResults() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ResultScreen(voters: voters),
-      ),
+      MaterialPageRoute(builder: (context) => ResultScreen(voters: voters)),
     );
   }
 
@@ -136,10 +200,7 @@ class _HomescreenState extends State<Homescreen> {
           onPressed: () {},
         ),
         centerTitle: true,
-        title: const Text(
-          'ElectionX',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text('ElectionX', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
@@ -149,9 +210,15 @@ class _HomescreenState extends State<Homescreen> {
             icon: const Icon(Icons.bar_chart, color: Colors.white),
             onPressed: showResults,
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: fetchCandidatesAndVotes,
+          ),
         ],
       ),
-      body: ListView.builder(
+      body: voters.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
         itemCount: voters.length,
         itemBuilder: (context, index) {
           return Padding(
@@ -166,26 +233,26 @@ class _HomescreenState extends State<Homescreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    voters[index]['name'],
-                    style: const TextStyle(fontSize: 20, color: Colors.white),
-                    overflow: TextOverflow.ellipsis,
+                  Expanded(
+                    child: Text(
+                      '${voters[index]['name']} - ${voters[index]['votes']} votes',
+                      style: const TextStyle(fontSize: 18, color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   ElevatedButton(
                     onPressed: () {
                       if (!hasVoted) {
-                        showVoteWarning(() => confirmVote(index));
+                        confirmVote(index);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('❌ You already voted!'),
-                            duration: Duration(milliseconds: 700),
-                          ),
+                          const SnackBar(content: Text('❌ You already voted!')),
                         );
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: hasVoted && votedIndex != index ? Colors.grey : Colors.white,
+                      backgroundColor:
+                      hasVoted && votedIndex != index ? Colors.grey : Colors.white,
                       foregroundColor: Colors.black,
                     ),
                     child: const Text('Vote'),
