@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../Network/wallet_login_page.dart';
 import 'ResultScreen.dart';
 
-
 class Homescreen extends StatefulWidget {
   const Homescreen({super.key});
 
@@ -12,25 +11,40 @@ class Homescreen extends StatefulWidget {
 
 class _HomescreenState extends State<Homescreen> {
   List<Map<String, dynamic>> voters = [];
+  bool hasVoted = false; // Track if user already voted
+  int votedIndex = -1;   // Track which project the user voted for
 
-  void addVoter(String name) {
+  void addVoter(String name, String walletAddress) {
     setState(() {
-      voters.add({'name': name, 'votes': 0});
+      voters.add({'name': name, 'wallet': walletAddress, 'votes': 0});
     });
   }
 
   void showAddDialog() {
     String newName = '';
+    String newWallet = '';
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Add Voter'),
-          content: TextField(
-            decoration: const InputDecoration(hintText: 'Enter name'),
-            onChanged: (value) {
-              newName = value;
-            },
+          title: const Text('Add Project'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(hintText: 'Enter project name'),
+                onChanged: (value) {
+                  newName = value;
+                },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                decoration: const InputDecoration(hintText: 'Enter wallet address'),
+                onChanged: (value) {
+                  newWallet = value;
+                },
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -39,8 +53,8 @@ class _HomescreenState extends State<Homescreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (newName.trim().isNotEmpty) {
-                  addVoter(newName.trim());
+                if (newName.trim().isNotEmpty && newWallet.trim().isNotEmpty) {
+                  addVoter(newName.trim(), newWallet.trim());
                 }
                 Navigator.pop(context);
               },
@@ -49,6 +63,50 @@ class _HomescreenState extends State<Homescreen> {
           ],
         );
       },
+    );
+  }
+
+  void showVoteWarning(VoidCallback onConfirmed) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('⚠ You only have one chance to vote!'),
+        duration: Duration(milliseconds: 700),
+      ),
+    );
+
+    Future.delayed(const Duration(milliseconds: 700), onConfirmed);
+  }
+
+  void confirmVote(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Vote'),
+        content: Text('Are you sure you want to vote for ${voters[index]['name']}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // No
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                voters[index]['votes'] += 1;
+                hasVoted = true;
+                votedIndex = index;
+              });
+              Navigator.pop(context); // Close confirm dialog
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('✅ You voted for ${voters[index]['name']}!'),
+                  duration: const Duration(milliseconds: 700),
+                ),
+              );
+            },
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -111,20 +169,23 @@ class _HomescreenState extends State<Homescreen> {
                   Text(
                     voters[index]['name'],
                     style: const TextStyle(fontSize: 20, color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      setState(() {
-                        voters[index]['votes'] += 1;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('You voted for ${voters[index]['name']}!'),
-                        ),
-                      );
+                      if (!hasVoted) {
+                        showVoteWarning(() => confirmVote(index));
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('❌ You already voted!'),
+                            duration: Duration(milliseconds: 700),
+                          ),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: hasVoted && votedIndex != index ? Colors.grey : Colors.white,
                       foregroundColor: Colors.black,
                     ),
                     child: const Text('Vote'),
