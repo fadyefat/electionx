@@ -1,180 +1,133 @@
+import 'package:flutter/services.dart';
 import 'package:http/http.dart';
+import 'package:reown_appkit/modal/appkit_modal_impl.dart';
+import 'package:reown_appkit/reown_appkit.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:web3dart/crypto.dart';
 
 class ElectionService {
-  final String rpcUrl = "https://sepolia.infura.io/v3/8c4396b4abc6465fbcf73f0c58b88293";
-  final String contractAddress = "0x2046f08936Eb60DB5fce4bB6DcE34dEED84480a0";
-
-  final String abi = '''[
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_candidate",
-				"type": "address"
-			},
-			{
-				"internalType": "string",
-				"name": "_name",
-				"type": "string"
-			}
-		],
-		"name": "AddConduation",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "result",
-		"outputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_duration",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "_nam",
-				"type": "string"
-			}
-		],
-		"name": "voting",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "get_NumOfVoting",
-		"outputs": [
-			{
-				"internalType": "uint256[]",
-				"name": "",
-				"type": "uint256[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getAllCandidateNames",
-		"outputs": [
-			{
-				"internalType": "string[]",
-				"name": "",
-				"type": "string[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	}
-]'''; // اختصرته هنا للتنظيم
-
-  late Web3Client client;
-  late EthereumAddress contractAddr;
-  late DeployedContract contract;
+  late Web3Client _client;
+  late String _abiCode;
+  late EthereumAddress _contractAddress;
+  late DeployedContract _contract;
+  late ContractFunction _addCandidate;
+  late ContractFunction _getAllCandidateNames;
+  late ContractFunction _getNumOfVoting;
+  late ContractFunction _owner;
 
   ElectionService() {
-    client = Web3Client(rpcUrl, Client());
-    contractAddr = EthereumAddress.fromHex(contractAddress);
+    _client = Web3Client(
+      'https://sepolia.infura.io/v3/9aa01c108dfd49c8b29a09f9a51690e0',
+      Client(),
+    );
   }
 
   Future<void> init() async {
-    contract = DeployedContract(
-      ContractAbi.fromJson(abi, "Elections"),
-      contractAddr,
+    _abiCode = await rootBundle.loadString('assets/Election.json');
+    _contractAddress = EthereumAddress.fromHex("0x3dc86694cb9fbb67cd14b50cf7b5d18aa1e1d8c2");
+
+    _contract = DeployedContract(
+      ContractAbi.fromJson(_abiCode, "Election"),
+      _contractAddress,
     );
+
+    _addCandidate = _contract.function("AddConduation");
+    _getAllCandidateNames = _contract.function("getAllCandidateNames");
+    _getNumOfVoting = _contract.function("get_NumOfVoting");
+    _owner = _contract.function("owner");
   }
 
-  Future<Transaction> getAddCandidateTx(String name, String walletAddress, EthereumAddress sender) async {
-    final function = contract.function("AddConduation");
-    return Transaction.callContract(
-      contract: contract,
-      function: function,
-      from: sender,
-      parameters: [EthereumAddress.fromHex(walletAddress), name],
-    );
-  }
-
-  Future<Transaction> getVoteTx(String name, EthereumAddress sender) async {
-    final function = contract.function("voting");
-    return Transaction.callContract(
-      contract: contract,
-      function: function,
-      from: sender,
-      parameters: [name],
-    );
-  }
-
-  Future<Transaction> getResultTx(EthereumAddress sender) async {
-    final function = contract.function("result");
-    return Transaction.callContract(
-      contract: contract,
-      function: function,
-      from: sender,
-      parameters: [],
-    );
-  }
-
-  Future<List<BigInt>> getVotes() async {
-    final function = contract.function("get_NumOfVoting");
-    final result = await client.call(
-      contract: contract,
-      function: function,
+  Future<List<Map<String, dynamic>>> getAllCandidates() async {
+    final names = await _client.call(
+      contract: _contract,
+      function: _getAllCandidateNames,
       params: [],
     );
-    if (result.isNotEmpty && result.first is List) {
-      return List<BigInt>.from(result.first);
-    }
-    return [];
-  }
 
-  Future<List<String>> getCandidates() async {
-    final function = contract.function("getAllCandidateNames");
-    final result = await client.call(
-      contract: contract,
-      function: function,
+    final votes = await _client.call(
+      contract: _contract,
+      function: _getNumOfVoting,
       params: [],
     );
-    if (result.isNotEmpty && result.first is List) {
-      return List<String>.from(result.first);
+
+    final nameList = (names[0] as List).map((e) => e.toString()).toList();
+    final voteList = (votes[0] as List).map((e) => BigInt.parse(e.toString()).toInt()).toList();
+
+    List<Map<String, dynamic>> candidates = [];
+
+    for (int i = 0; i < nameList.length; i++) {
+      candidates.add({
+        'name': nameList[i],
+        'votes': voteList[i],
+      });
     }
-    return [];
+
+    return candidates;
   }
 
-  EthereumAddress getAddressFromHex(String address) {
-    return EthereumAddress.fromHex(address);
+  Future<EthereumAddress> getCurrentAddress(ReownAppKitModal modal) async {
+    final session = modal.session;
+    final selectedChain = modal.selectedChain;
+
+    if (session == null || selectedChain == null) {
+      throw Exception("Session or chain not initialized.");
+    }
+
+    final namespace = ReownAppKitModalNetworks.getNamespaceForChainId(selectedChain.chainId);
+    final addressHex = session.getAddress(namespace);
+
+    if (addressHex == null) {
+      throw Exception("No address found in session.");
+    }
+
+    return EthereumAddress.fromHex(addressHex);
+  }
+
+  Future<EthereumAddress> getOwner() async {
+    final result = await _client.call(
+      contract: _contract,
+      function: _owner,
+      params: [],
+    );
+    return result.first as EthereumAddress;
+  }
+
+  Future<String> addCandidate(String name, EthereumAddress wallet, ReownAppKitModal modal) async {
+    final session = modal.session;
+    final selectedChain = modal.selectedChain;
+
+    if (session == null || selectedChain == null) {
+      throw Exception("Session or chain not initialized.");
+    }
+
+    final namespace = ReownAppKitModalNetworks.getNamespaceForChainId(selectedChain.chainId);
+    final from = session.getAddress(namespace);
+    if (from == null) throw Exception("No address found in session.");
+
+    final data = _client.encodeFunctionCall(_addCandidate, [wallet, name]);
+
+    final response = await modal.request(
+      topic: session.topic,
+      chainId: 'eip155:${selectedChain.chainId}',
+      request: SessionRequestParams(
+        method: 'eth_sendTransaction',
+        params: [
+          {
+            'from': from,
+            'to': _contractAddress.hex,
+            'data': data,
+          }
+        ],
+      ),
+    );
+
+    return response as String;
+  }
+}
+
+extension ABIEncoding on Web3Client {
+  String encodeFunctionCall(ContractFunction function, List<dynamic> params) {
+    final encoded = function.encodeCall(params);
+    return '0x' + bytesToHex(encoded, include0x: false);
   }
 }

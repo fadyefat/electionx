@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
-import 'wallet_login_page.dart';
+import 'package:reown_appkit/modal/appkit_modal_impl.dart';
+import 'package:reown_appkit/reown_appkit.dart';
+import 'package:web3dart/web3dart.dart';
+
+import '../../Network/election_service.dart' show ElectionService;
+import '../../Network/siwe_config.dart';
 import 'ResultScreen.dart';
+import 'wallet_login_page.dart';
 
 class Homescreen extends StatefulWidget {
   const Homescreen({super.key});
@@ -10,14 +16,86 @@ class Homescreen extends StatefulWidget {
 }
 
 class _HomescreenState extends State<Homescreen> {
+  final ElectionService _electionService = ElectionService();
   List<Map<String, dynamic>> voters = [];
-  bool hasVoted = false; // Track if user already voted
-  int votedIndex = -1;   // Track which project the user voted for
+  bool hasVoted = false;
+  int votedIndex = -1;
+  bool _isLoading = true;
+  EthereumAddress? _currentUser;
+  EthereumAddress? _adminAddress;
+  late ReownAppKitModal _appKitModal;
 
-  void addVoter(String name, String walletAddress) {
-    setState(() {
-      voters.add({'name': name, 'wallet': walletAddress, 'votes': 0});
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialize();
     });
+  }
+
+
+  Future<void> _initialize() async {
+    try {
+      // Step 1: Create the appKit instance
+      final appKit = await ReownAppKit.createInstance(
+        projectId: '47a573f8635bdc22adf4030bdca85210',
+        metadata: const PairingMetadata(
+          name: 'ElectionX',
+          description: 'Voting app using MetaMask login',
+          url: 'https://github.com',
+          icons: [
+            'https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg',
+          ],
+        ),
+      );
+
+      // Step 2: Create the modal using the appKit
+      _appKitModal = ReownAppKitModal(
+        context: context,
+        appKit: appKit,
+      );
+
+      // Step 3: Initialize the modal
+      await _appKitModal.init();
+
+      // Step 4: Initialize the contract logic
+      await _electionService.init();
+      _currentUser = await _electionService.getCurrentAddress(_appKitModal);
+      _adminAddress = await _electionService.getOwner();
+
+      final fetchedVoters = await _electionService.getAllCandidates();
+
+      setState(() {
+        voters = fetchedVoters;
+        _isLoading = false;
+      });
+    } catch (e, stackTrace) {
+      debugPrint('❌ Initialization error: $e');
+      debugPrint('🔍 Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error initializing: $e')),
+      );
+    }
+  }
+
+  void addVoter(String name, String walletAddress) async {
+    try {
+      final txHash = await _electionService.addCandidate(
+        name,
+        EthereumAddress.fromHex(walletAddress),
+        _appKitModal,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Candidate added. Tx: $txHash')),
+      );
+      setState(() {
+        voters.add({'name': name, 'wallet': walletAddress, 'votes': 0});
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Failed to add candidate: $e')),
+      );
+    }
   }
 
   void showAddDialog() {
@@ -33,16 +111,12 @@ class _HomescreenState extends State<Homescreen> {
             children: [
               TextField(
                 decoration: const InputDecoration(hintText: 'Enter project name'),
-                onChanged: (value) {
-                  newName = value;
-                },
+                onChanged: (value) => newName = value,
               ),
               const SizedBox(height: 10),
               TextField(
                 decoration: const InputDecoration(hintText: 'Enter wallet address'),
-                onChanged: (value) {
-                  newWallet = value;
-                },
+                onChanged: (value) => newWallet = value,
               ),
             ],
           ),
@@ -55,8 +129,8 @@ class _HomescreenState extends State<Homescreen> {
               onPressed: () {
                 if (newName.trim().isNotEmpty && newWallet.trim().isNotEmpty) {
                   addVoter(newName.trim(), newWallet.trim());
+                  Navigator.pop(context);
                 }
-                Navigator.pop(context);
               },
               child: const Text('Add'),
             ),
@@ -66,6 +140,16 @@ class _HomescreenState extends State<Homescreen> {
     );
   }
 
+  void _checkIfAdminAndShowDialog() {
+    if (_currentUser == _adminAddress) {
+      showAddDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Only the admin can add projects.')),
+      );
+    }
+  }
+
   void showVoteWarning(VoidCallback onConfirmed) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -73,7 +157,6 @@ class _HomescreenState extends State<Homescreen> {
         duration: Duration(milliseconds: 700),
       ),
     );
-
     Future.delayed(const Duration(milliseconds: 700), onConfirmed);
   }
 
@@ -85,7 +168,7 @@ class _HomescreenState extends State<Homescreen> {
         content: Text('Are you sure you want to vote for ${voters[index]['name']}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // No
+            onPressed: () => Navigator.pop(context),
             child: const Text('No'),
           ),
           ElevatedButton(
@@ -95,12 +178,9 @@ class _HomescreenState extends State<Homescreen> {
                 hasVoted = true;
                 votedIndex = index;
               });
-              Navigator.pop(context); // Close confirm dialog
+              Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('✅ You voted for ${voters[index]['name']}!'),
-                  duration: const Duration(milliseconds: 700),
-                ),
+                SnackBar(content: Text('✅ You voted for ${voters[index]['name']}!')),
               );
             },
             child: const Text('Yes'),
@@ -128,18 +208,17 @@ class _HomescreenState extends State<Homescreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.orange)),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.settings, color: Colors.white),
-          onPressed: () {},
-        ),
-        centerTitle: true,
-        title: const Text(
-          'ElectionX',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text('ElectionX', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
@@ -198,7 +277,7 @@ class _HomescreenState extends State<Homescreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.black,
-        onPressed: showAddDialog,
+        onPressed: _checkIfAdminAndShowDialog,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

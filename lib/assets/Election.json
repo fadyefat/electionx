@@ -1,0 +1,96 @@
+[
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_candidate",
+				"type": "address"
+			},
+			{
+				"internalType": "string",
+				"name": "_name",
+				"type": "string"
+			}
+		],
+		"name": "AddConduation",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "result",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_duration",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_nam",
+				"type": "string"
+			}
+		],
+		"name": "voting",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "get_NumOfVoting",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getAllCandidateNames",
+		"outputs": [
+			{
+				"internalType": "string[]",
+				"name": "",
+				"type": "string[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]
