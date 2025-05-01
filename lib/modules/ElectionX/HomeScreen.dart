@@ -4,7 +4,6 @@ import 'package:reown_appkit/reown_appkit.dart';
 import 'package:web3dart/web3dart.dart';
 
 import '../../Network/election_service.dart' show ElectionService;
-import '../../Network/siwe_config.dart';
 import 'ResultScreen.dart';
 import 'wallet_login_page.dart';
 
