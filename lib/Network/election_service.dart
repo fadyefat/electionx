@@ -21,14 +21,14 @@ class ElectionService {
 
   ElectionService() {
     _client = Web3Client(
-      'https://sepolia.infura.io/v3/9aa01c108dfd49c8b29a09f9a51690e0',
+      'https://sepolia.infura.io/v3/8c4396b4abc6465fbcf73f0c58b88293',
       Client(),
     );
   }
 
   Future<void> init() async {
     _abiCode = await rootBundle.loadString('assets/Election.json');
-    _contractAddress = EthereumAddress.fromHex("0x3dc86694cb9fbb67cd14b50cf7b5d18aa1e1d8c2");
+    _contractAddress = EthereumAddress.fromHex("0x2046f08936Eb60DB5fce4bB6DcE34dEED84480a0");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abiCode, "Election"),

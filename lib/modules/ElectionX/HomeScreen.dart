@@ -5,7 +5,6 @@ import 'ResultScreen.dart';
 import 'wallet_login_page.dart';
 import '../../main.dart';
 
-
 class Homescreen extends StatefulWidget {
   final ReownAppKitModal appKitModal;
 
@@ -38,6 +37,10 @@ class _HomescreenState extends State<Homescreen> {
       _currentUser = await _electionService.getCurrentAddress(_appKitModal);
       _adminAddress = await _electionService.getOwner();
 
+      // Debugging the addresses
+      print("Current User Address: $_currentUser");
+      print("Admin Address: $_adminAddress");
+
       final candidates = await _electionService.getAllCandidates();
       setState(() {
         voters = candidates;
@@ -56,10 +59,6 @@ class _HomescreenState extends State<Homescreen> {
       });
     }
   }
-
-
-
-
   void addVoter(String name, String walletAddress) async {
     try {
       final txHash = await _electionService.addCandidate(
@@ -138,7 +137,8 @@ class _HomescreenState extends State<Homescreen> {
   }
 
   void _checkIfAdminAndShowDialog() {
-    if (_currentUser == _adminAddress) {
+    // Compare addresses using `toString()`
+    if (_currentUser?.toString() == _adminAddress?.toString()) {
       showAddDialog();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
