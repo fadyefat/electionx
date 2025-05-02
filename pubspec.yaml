@@ -29,4 +29,4 @@ flutter:
 
   assets:
     - assets/MetaMask_Fox.svg.png
-    - lib/assets/Election.json
+    - assets/Election.json

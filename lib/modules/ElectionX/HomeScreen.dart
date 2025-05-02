@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:reown_appkit/modal/appkit_modal_impl.dart';
 import 'package:reown_appkit/reown_appkit.dart';
-import 'package:web3dart/web3dart.dart';
-
-import '../../Network/election_service.dart' show ElectionService;
+import '../../Network/election_service.dart';
 import 'ResultScreen.dart';
 import 'wallet_login_page.dart';
+import '../../main.dart';
+
 
 class Homescreen extends StatefulWidget {
-  const Homescreen({super.key});
+  final ReownAppKitModal appKitModal;
+
+  const Homescreen({super.key, required this.appKitModal});
 
   @override
   State<Homescreen> createState() => _HomescreenState();
@@ -27,55 +28,37 @@ class _HomescreenState extends State<Homescreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initialize();
-    });
+    _appKitModal = widget.appKitModal;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initialize());
   }
-
 
   Future<void> _initialize() async {
     try {
-      // Step 1: Create the appKit instance
-      final appKit = await ReownAppKit.createInstance(
-        projectId: '47a573f8635bdc22adf4030bdca85210',
-        metadata: const PairingMetadata(
-          name: 'ElectionX',
-          description: 'Voting app using MetaMask login',
-          url: 'https://github.com',
-          icons: [
-            'https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg',
-          ],
-        ),
-      );
-
-      // Step 2: Create the modal using the appKit
-      _appKitModal = ReownAppKitModal(
-        context: context,
-        appKit: appKit,
-      );
-
-      // Step 3: Initialize the modal
-      await _appKitModal.init();
-
-      // Step 4: Initialize the contract logic
       await _electionService.init();
       _currentUser = await _electionService.getCurrentAddress(_appKitModal);
       _adminAddress = await _electionService.getOwner();
 
-      final fetchedVoters = await _electionService.getAllCandidates();
-
+      final candidates = await _electionService.getAllCandidates();
       setState(() {
-        voters = fetchedVoters;
+        voters = candidates;
         _isLoading = false;
       });
-    } catch (e, stackTrace) {
-      debugPrint('❌ Initialization error: $e');
-      debugPrint('🔍 Stack trace: $stackTrace');
+    } catch (e, s) {
+      print("❌ Error in _initialize: $e");
+      print("📌 StackTrace: $s");
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error initializing: $e')),
+        SnackBar(content: Text('❌ Failed to load data: $e')),
       );
+
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+
+
+
 
   void addVoter(String name, String walletAddress) async {
     try {
@@ -84,15 +67,33 @@ class _HomescreenState extends State<Homescreen> {
         EthereumAddress.fromHex(walletAddress),
         _appKitModal,
       );
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('✅ Candidate added. Tx: $txHash')),
       );
-      setState(() {
-        voters.add({'name': name, 'wallet': walletAddress, 'votes': 0});
-      });
+
+      final updated = await _electionService.getAllCandidates();
+      setState(() => voters = updated);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Failed to add candidate: $e')),
+      );
+    }
+  }
+
+  void vote(int index) async {
+    try {
+      final txHash = await _electionService.vote(voters[index]['name'], _appKitModal);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Voted successfully! Tx: $txHash')),
+      );
+      setState(() {
+        hasVoted = true;
+        votedIndex = index;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Voting failed: $e')),
       );
     }
   }
@@ -104,12 +105,12 @@ class _HomescreenState extends State<Homescreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Add Project'),
+          title: const Text('Add Candidate'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                decoration: const InputDecoration(hintText: 'Enter project name'),
+                decoration: const InputDecoration(hintText: 'Enter name'),
                 onChanged: (value) => newName = value,
               ),
               const SizedBox(height: 10),
@@ -120,14 +121,11 @@ class _HomescreenState extends State<Homescreen> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
-                if (newName.trim().isNotEmpty && newWallet.trim().isNotEmpty) {
-                  addVoter(newName.trim(), newWallet.trim());
+                if (newName.isNotEmpty && newWallet.isNotEmpty) {
+                  addVoter(newName, newWallet);
                   Navigator.pop(context);
                 }
               },
@@ -144,19 +142,9 @@ class _HomescreenState extends State<Homescreen> {
       showAddDialog();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ Only the admin can add projects.')),
+        const SnackBar(content: Text('❌ Only admin can add candidates.')),
       );
     }
-  }
-
-  void showVoteWarning(VoidCallback onConfirmed) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('⚠ You only have one chance to vote!'),
-        duration: Duration(milliseconds: 700),
-      ),
-    );
-    Future.delayed(const Duration(milliseconds: 700), onConfirmed);
   }
 
   void confirmVote(int index) {
@@ -166,21 +154,11 @@ class _HomescreenState extends State<Homescreen> {
         title: const Text('Confirm Vote'),
         content: Text('Are you sure you want to vote for ${voters[index]['name']}?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('No')),
           ElevatedButton(
             onPressed: () {
-              setState(() {
-                voters[index]['votes'] += 1;
-                hasVoted = true;
-                votedIndex = index;
-              });
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('✅ You voted for ${voters[index]['name']}!')),
-              );
+              vote(index);
             },
             child: const Text('Yes'),
           ),
@@ -189,12 +167,17 @@ class _HomescreenState extends State<Homescreen> {
     );
   }
 
+  void showVoteWarning(VoidCallback onConfirmed) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('⚠ You can vote only once!')),
+    );
+    Future.delayed(const Duration(milliseconds: 700), onConfirmed);
+  }
+
   void showResults() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ResultScreen(voters: voters),
-      ),
+      MaterialPageRoute(builder: (context) => ResultScreen(voters: voters)),
     );
   }
 
@@ -255,10 +238,7 @@ class _HomescreenState extends State<Homescreen> {
                         showVoteWarning(() => confirmVote(index));
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('❌ You already voted!'),
-                            duration: Duration(milliseconds: 700),
-                          ),
+                          const SnackBar(content: Text('❌ You already voted!')),
                         );
                       }
                     },

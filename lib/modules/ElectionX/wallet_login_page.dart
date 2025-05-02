@@ -74,7 +74,7 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
       _connectionTimer?.cancel();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const Homescreen()),
+        MaterialPageRoute(builder: (context) => Homescreen(appKitModal: _appKitModal!)),
       );
     }
   }

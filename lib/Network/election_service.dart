@@ -10,10 +10,14 @@ class ElectionService {
   late String _abiCode;
   late EthereumAddress _contractAddress;
   late DeployedContract _contract;
+
+  // Contract functions
   late ContractFunction _addCandidate;
   late ContractFunction _getAllCandidateNames;
   late ContractFunction _getNumOfVoting;
   late ContractFunction _owner;
+  late ContractFunction _voting;
+  late ContractFunction _result;
 
   ElectionService() {
     _client = Web3Client(
@@ -35,6 +39,8 @@ class ElectionService {
     _getAllCandidateNames = _contract.function("getAllCandidateNames");
     _getNumOfVoting = _contract.function("get_NumOfVoting");
     _owner = _contract.function("owner");
+    _voting = _contract.function("voting");
+    _result = _contract.function("result");
   }
 
   Future<List<Map<String, dynamic>>> getAllCandidates() async {
@@ -122,6 +128,71 @@ class ElectionService {
     );
 
     return response as String;
+  }
+
+  Future<String> vote(String candidateName, ReownAppKitModal modal) async {
+    final session = modal.session;
+    final selectedChain = modal.selectedChain;
+
+    if (session == null || selectedChain == null) {
+      throw Exception("Session or chain not initialized.");
+    }
+
+    final namespace = ReownAppKitModalNetworks.getNamespaceForChainId(selectedChain.chainId);
+    final from = session.getAddress(namespace);
+    if (from == null) throw Exception("No address found in session.");
+
+    final data = _client.encodeFunctionCall(_voting, [candidateName]);
+
+    final response = await modal.request(
+      topic: session.topic,
+      chainId: 'eip155:${selectedChain.chainId}',
+      request: SessionRequestParams(
+        method: 'eth_sendTransaction',
+        params: [
+          {
+            'from': from,
+            'to': _contractAddress.hex,
+            'data': data,
+          }
+        ],
+      ),
+    );
+
+    return response as String;
+  }
+
+  Future<String> getResult(ReownAppKitModal modal) async {
+    final session = modal.session;
+    final selectedChain = modal.selectedChain;
+
+    if (session == null || selectedChain == null) {
+      throw Exception("Session or chain not initialized.");
+    }
+
+    final namespace = ReownAppKitModalNetworks.getNamespaceForChainId(selectedChain.chainId);
+    final from = session.getAddress(namespace);
+    if (from == null) throw Exception("No address found in session.");
+
+    final data = _client.encodeFunctionCall(_result, []);
+
+    final response = await modal.request(
+      topic: session.topic,
+      chainId: 'eip155:${selectedChain.chainId}',
+      request: SessionRequestParams(
+        method: 'eth_call',
+        params: [
+          {
+            'from': from,
+            'to': _contractAddress.hex,
+            'data': data,
+          },
+          "latest"
+        ],
+      ),
+    );
+
+    return response.toString();
   }
 }
 
