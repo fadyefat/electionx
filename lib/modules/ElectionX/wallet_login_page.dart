@@ -1,4 +1,4 @@
-import 'dart:async'; // Import to use Timer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:reown_appkit/reown_appkit.dart';
 import 'HomeScreen.dart';
@@ -14,20 +14,19 @@ class WalletLoginPage extends StatefulWidget {
 class _WalletLoginPageState extends State<WalletLoginPage> {
   ReownAppKitModal? _appKitModal;
   bool? _isConnected;
-  Timer? _connectionTimer; // Declare a Timer
+  Timer? _connectionTimer;
+  bool _snackShown = false; // ✅ Prevent snackbar spam
 
   @override
-
   void initState() {
     super.initState();
     _initializeAppKit();
   }
 
-  // Initialize AppKit
   Future<void> _initializeAppKit() async {
-    if (_appKitModal != null) return; // ✅ prevent reinitialization
+    if (_appKitModal != null) return;
 
-    final appKit = widget.appKit; // استخدام الـ appKit الذي تم تمريره
+    final appKit = widget.appKit;
 
     final appKitModal = ReownAppKitModal(
       context: context,
@@ -40,18 +39,15 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
       _appKitModal = appKitModal;
     });
 
-    // Start checking the connection status every 5 seconds
     _startConnectionCheck();
   }
 
-  // Start the timer to check the connection every 5 seconds
   void _startConnectionCheck() {
     _connectionTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _checkConnection();
     });
   }
 
-  // Check if the wallet is connected
   Future<void> _checkConnection() async {
     final isConnected = await _appKitModal?.isConnected ?? false;
 
@@ -59,22 +55,12 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
       _isConnected = isConnected;
     });
 
-    // اطبع البيانات للتأكد
-    print("✅ هل الاتصال تم: $_isConnected");
-    print("📦 الجلسة: ${_appKitModal?.session}");
-    print("🔗 الشبكة المختارة: ${_appKitModal?.selectedChain}");
-
     if (_isConnected == true &&
         _appKitModal?.session != null &&
         _appKitModal?.selectedChain != null) {
-      // أوقف المؤقت
       _connectionTimer?.cancel();
-      await Future.delayed(Duration(seconds: 2));
-      print("✅ هل الاتصال تم: ${_appKitModal!.session != null}");
-      print("📦 الجلسة: ${_appKitModal!.session}");
-      print("🔗 الشبكة المختارة: ${_appKitModal!.selectedChain}");
+      await Future.delayed(const Duration(seconds: 2));
 
-      // انتقل بعد التأكد من الاتصال
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -82,15 +68,19 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ المحفظة غير متصلة بشكل صحيح')),
-      );
+      if (!_snackShown) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ المحفظة غير متصلة بشكل صحيح')),
+        );
+        _snackShown = true;
+      }
     }
   }
 
   @override
   void dispose() {
-    _appKitModal?.dispose(); // تضمن إنه ما يفضل شغال لما تخرج من الصفحة
+    _appKitModal?.dispose();
+    _connectionTimer?.cancel(); // ✅ Dispose timer properly
     super.dispose();
   }
 
