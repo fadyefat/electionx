@@ -1,22 +1,52 @@
 import 'package:flutter/material.dart';
+import '../../Network/election_service.dart';
 
-class ResultScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> voters;
+class ResultScreen extends StatefulWidget {
+  const ResultScreen({super.key, required List<Map<String, dynamic>> voters});
 
-  const ResultScreen({super.key, required this.voters});
+  @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  final ElectionService _electionService = ElectionService();
+  List<Map<String, dynamic>> voters = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadResults();
+  }
+
+  Future<void> _loadResults() async {
+    await _electionService.init();
+
+    final result = await _electionService.getAllCandidates();
+    setState(() {
+      voters = result;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (voters.isEmpty) {
+    if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Results')),
-        body: const Center(child: Text('No voters yet.')),
+        appBar: AppBar(title: Text('Results')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    List<Map<String, dynamic>> sortedVoters = [...voters];
-    sortedVoters.sort((a, b) => b['votes'].compareTo(a['votes']));
-    final winner = sortedVoters.first;
+    if (voters.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Results')),
+        body: const Center(child: Text('No candidates yet.')),
+      );
+    }
+
+    voters.sort((a, b) => b['votes'].compareTo(a['votes']));
+    final winner = voters.first;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Results')),
@@ -30,27 +60,15 @@ class ResultScreen extends StatelessWidget {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-            Expanded( // Makes the list scrollable
+            Expanded(
               child: ListView.builder(
-                itemCount: sortedVoters.length,
+                itemCount: voters.length,
                 itemBuilder: (context, index) {
-                  final voter = sortedVoters[index];
+                  final voter = voters[index];
                   return ListTile(
-                    leading: Text(
-                      '${index + 1}', // Show 1,2,3,4 beside name
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    title: Text(
-                      voter['name'],
-                      style: const TextStyle(fontSize: 18),
-                    ),
-                    trailing: Text(
-                      '${voter['votes']} vote(s)',
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    leading: Text('${index + 1}'),
+                    title: Text(voter['name']),
+                    trailing: Text('${voter['votes']} vote(s)'),
                   );
                 },
               ),
