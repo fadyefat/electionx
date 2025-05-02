@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
+import 'package:reown_appkit/reown_appkit.dart'; // مهم
 import 'wallet_login_page.dart';
 
 class SplashScreen extends StatefulWidget {
+  final ReownAppKit appKit;
+
+  const SplashScreen({super.key, required this.appKit});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -15,11 +19,12 @@ class _SplashScreenState extends State<SplashScreen> {
     Timer(Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const WalletLoginPage()),
+        MaterialPageRoute(
+          builder: (context) => WalletLoginPage(appKit: widget.appKit), // تمرير الـ appKit هنا
+        ),
       );
     });
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

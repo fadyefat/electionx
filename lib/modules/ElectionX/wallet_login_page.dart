@@ -1,11 +1,11 @@
 import 'dart:async'; // Import to use Timer
 import 'package:flutter/material.dart';
 import 'package:reown_appkit/reown_appkit.dart';
-
 import 'HomeScreen.dart';
 
 class WalletLoginPage extends StatefulWidget {
-  const WalletLoginPage({super.key});
+  final ReownAppKit appKit;
+  const WalletLoginPage({super.key, required this.appKit});
 
   @override
   State<WalletLoginPage> createState() => _WalletLoginPageState();
@@ -27,17 +27,7 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   Future<void> _initializeAppKit() async {
     if (_appKitModal != null) return; // ✅ prevent reinitialization
 
-    final appKit = await ReownAppKit.createInstance(
-      projectId: '47a573f8635bdc22adf4030bdca85210',
-      metadata: const PairingMetadata(
-        name: 'ElectionX',
-        description: 'Voting app using MetaMask login',
-        url: 'https://github.com',
-        icons: [
-          'https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg',
-        ],
-      ),
-    );
+    final appKit = widget.appKit; // استخدام الـ appKit الذي تم تمريره
 
     final appKitModal = ReownAppKitModal(
       context: context,
@@ -64,28 +54,45 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   // Check if the wallet is connected
   Future<void> _checkConnection() async {
     final isConnected = await _appKitModal?.isConnected ?? false;
+
     setState(() {
       _isConnected = isConnected;
     });
 
-    // If connected, navigate to the next screen
-    if (_isConnected == true) {
-      // Stop the timer to avoid continuous checks
+    // اطبع البيانات للتأكد
+    print("✅ هل الاتصال تم: $_isConnected");
+    print("📦 الجلسة: ${_appKitModal?.session}");
+    print("🔗 الشبكة المختارة: ${_appKitModal?.selectedChain}");
+
+    if (_isConnected == true &&
+        _appKitModal?.session != null &&
+        _appKitModal?.selectedChain != null) {
+      // أوقف المؤقت
       _connectionTimer?.cancel();
+      await Future.delayed(Duration(seconds: 2));
+      print("✅ هل الاتصال تم: ${_appKitModal!.session != null}");
+      print("📦 الجلسة: ${_appKitModal!.session}");
+      print("🔗 الشبكة المختارة: ${_appKitModal!.selectedChain}");
+
+      // انتقل بعد التأكد من الاتصال
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => Homescreen(appKitModal: _appKitModal!)),
+        MaterialPageRoute(
+          builder: (context) => Homescreen(appKitModal: _appKitModal!),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ المحفظة غير متصلة بشكل صحيح')),
       );
     }
   }
-
 
   @override
   void dispose() {
     _appKitModal?.dispose(); // تضمن إنه ما يفضل شغال لما تخرج من الصفحة
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +149,7 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
                     const SizedBox(height: 20),
                     AppKitModalConnectButton(
                       appKit: _appKitModal!,
-                      state: _isConnected == true
+                      state: (_isConnected ?? false)
                           ? ConnectButtonState.connected
                           : ConnectButtonState.disabled,
                     ),

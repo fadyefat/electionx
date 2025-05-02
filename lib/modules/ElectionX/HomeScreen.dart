@@ -3,7 +3,6 @@ import 'package:reown_appkit/reown_appkit.dart';
 import '../../Network/election_service.dart';
 import 'ResultScreen.dart';
 import 'wallet_login_page.dart';
-import '../../main.dart';
 
 class Homescreen extends StatefulWidget {
   final ReownAppKitModal appKitModal;
@@ -40,6 +39,8 @@ class _HomescreenState extends State<Homescreen> {
       // Debugging the addresses
       print("Current User Address: $_currentUser");
       print("Admin Address: $_adminAddress");
+      print("🔗 session: ${_appKitModal.session}");
+      print("🌐 selectedChain: ${_appKitModal.selectedChain}");
 
       final candidates = await _electionService.getAllCandidates();
       setState(() {
@@ -61,6 +62,13 @@ class _HomescreenState extends State<Homescreen> {
   }
   void addVoter(String name, String walletAddress) async {
     try {
+      // ✅ تأكد إن المحفظة متصلة
+      final isConnected = await _appKitModal.isConnected;
+      if (!isConnected) {
+        await _appKitModal.appKit!.connect(); // 🔓 تطلب من المستخدم فتح المحفظة والموافقة
+      }
+
+      // ✅ تنفيذ المعاملة
       final txHash = await _electionService.addCandidate(
         name,
         EthereumAddress.fromHex(walletAddress),
@@ -71,14 +79,20 @@ class _HomescreenState extends State<Homescreen> {
         SnackBar(content: Text('✅ Candidate added. Tx: $txHash')),
       );
 
+      // ✅ تحديث القائمة
       final updated = await _electionService.getAllCandidates();
       setState(() => voters = updated);
     } catch (e) {
+      print("Error: Failed to add candidate: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Failed to add candidate: $e')),
       );
     }
   }
+
+
+
+
 
   void vote(int index) async {
     try {
@@ -182,11 +196,21 @@ class _HomescreenState extends State<Homescreen> {
   }
 
   void goToWalletConnect() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const WalletLoginPage()),
-    );
+    if (widget.appKitModal.appKit != null) {
+      // تحويل النوع
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WalletLoginPage(appKit: widget.appKitModal.appKit as ReownAppKit),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Wallet not connected properly')),
+      );
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
