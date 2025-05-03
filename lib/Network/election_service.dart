@@ -113,7 +113,7 @@ class ElectionService {
 
     final response = await modal.request(
       topic: session.topic,
-      chainId: 'eip155:${selectedChain.chainId}',
+      chainId: selectedChain.chainId,
       request: SessionRequestParams(
         method: 'eth_sendTransaction',
         params: [
@@ -146,7 +146,7 @@ class ElectionService {
 
     final response = await modal.request(
       topic: session.topic,
-      chainId: 'eip155:${selectedChain.chainId}',
+      chainId: selectedChain.chainId,
       request: SessionRequestParams(
         method: 'eth_sendTransaction',
         params: [
@@ -179,7 +179,7 @@ class ElectionService {
 
     final response = await modal.request(
       topic: session.topic,
-      chainId: 'eip155:${selectedChain.chainId}',
+      chainId: selectedChain.chainId,
       request: SessionRequestParams(
         method: 'eth_call',
         params: [
