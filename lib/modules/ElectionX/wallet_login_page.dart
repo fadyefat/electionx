@@ -117,7 +117,9 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
                     const SizedBox(height: 20),
                     AppKitModalConnectButton(
                       appKit: modal,
-                      state:  ConnectButtonState.connecting,
+                      state: _isConnected
+                          ? ConnectButtonState.connected
+                          : ConnectButtonState.disabled,
                     ),
                   ],
                 ),
