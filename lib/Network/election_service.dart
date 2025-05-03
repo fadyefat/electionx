@@ -43,6 +43,7 @@ class ElectionService {
     _result = _contract.function("result");
   }
 
+  // ✅ جلب كل أسماء المرشحين وعدد أصواتهم
   Future<List<Map<String, dynamic>>> getAllCandidates() async {
     final names = await _client.call(
       contract: _contract,
@@ -71,6 +72,18 @@ class ElectionService {
     return candidates;
   }
 
+  // ✅ جلب عدد الأصوات فقط (لو أردت عرضهم مستقبلاً بشكل منفصل)
+  Future<List<int>> getNumOfVotes() async {
+    final votes = await _client.call(
+      contract: _contract,
+      function: _getNumOfVoting,
+      params: [],
+    );
+
+    return (votes[0] as List).map((e) => BigInt.parse(e.toString()).toInt()).toList();
+  }
+
+  // ✅ جلب العنوان الحالي من الجلسة
   Future<EthereumAddress> getCurrentAddress(ReownAppKitModal modal) async {
     final session = modal.session;
     final selectedChain = modal.selectedChain;
@@ -89,6 +102,7 @@ class ElectionService {
     return EthereumAddress.fromHex(addressHex);
   }
 
+  // ✅ جلب عنوان الـ owner من العقد
   Future<EthereumAddress> getOwner() async {
     final result = await _client.call(
       contract: _contract,
@@ -98,6 +112,7 @@ class ElectionService {
     return result.first as EthereumAddress;
   }
 
+  // ✅ إضافة مرشح جديد (فقط من الـ owner - يتحقق العقد من الصلاحية)
   Future<String> addCandidate(String name, EthereumAddress wallet, ReownAppKitModal modal) async {
     final session = modal.session;
     final selectedChain = modal.selectedChain;
@@ -130,6 +145,7 @@ class ElectionService {
     return response as String;
   }
 
+  // ✅ تنفيذ تصويت لصالح مرشح معين
   Future<String> vote(String candidateName, ReownAppKitModal modal) async {
     final session = modal.session;
     final selectedChain = modal.selectedChain;
@@ -162,6 +178,7 @@ class ElectionService {
     return response as String;
   }
 
+  // ✅ جلب نتائج التصويت (حسب دالة result في العقد)
   Future<String> getResult(ReownAppKitModal modal) async {
     final session = modal.session;
     final selectedChain = modal.selectedChain;
@@ -196,6 +213,7 @@ class ElectionService {
   }
 }
 
+// ✅ Extension لسهولة تشفير البيانات للدوال
 extension ABIEncoding on Web3Client {
   String encodeFunctionCall(ContractFunction function, List<dynamic> params) {
     final encoded = function.encodeCall(params);

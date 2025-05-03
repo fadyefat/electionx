@@ -21,6 +21,8 @@ void main() async {
   runApp(MyApp(appKit: appKit));  // مرّر الـ appKit هنا
 }
 
+
+
 class MyApp extends StatelessWidget {
   final ReownAppKit appKit;
   const MyApp({super.key, required this.appKit});

@@ -13,9 +13,8 @@ class WalletLoginPage extends StatefulWidget {
 
 class _WalletLoginPageState extends State<WalletLoginPage> {
   ReownAppKitModal? _appKitModal;
-  bool? _isConnected;
   Timer? _connectionTimer;
-  bool _snackShown = false; // ✅ Prevent snackbar spam
+  bool _snackShown = false;
 
   @override
   void initState() {
@@ -24,13 +23,12 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   }
 
   Future<void> _initializeAppKit() async {
-    if (_appKitModal != null) return;
-
     final appKit = widget.appKit;
-
+    ReownAppKitModalNetworks.removeSupportedNetworks('solana');
     final appKitModal = ReownAppKitModal(
       context: context,
       appKit: appKit,
+
     );
 
     await appKitModal.init();
@@ -43,24 +41,22 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   }
 
   void _startConnectionCheck() {
-    _connectionTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _connectionTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       _checkConnection();
     });
   }
 
   Future<void> _checkConnection() async {
-    final isConnected = await _appKitModal?.isConnected ?? false;
+    if (_appKitModal == null) return;
 
-    setState(() {
-      _isConnected = isConnected;
-    });
+    final isConnected = await _appKitModal!.isConnected;
 
-    if (_isConnected == true &&
-        _appKitModal?.session != null &&
-        _appKitModal?.selectedChain != null) {
+    if (isConnected &&
+        _appKitModal!.session != null &&
+        _appKitModal!.selectedChain != null) {
       _connectionTimer?.cancel();
-      await Future.delayed(const Duration(seconds: 2));
 
+      // تنقّل بعد الاتصال
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -80,7 +76,7 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   @override
   void dispose() {
     _appKitModal?.dispose();
-    _connectionTimer?.cancel(); // ✅ Dispose timer properly
+    _connectionTimer?.cancel();
     super.dispose();
   }
 
@@ -139,9 +135,7 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
                     const SizedBox(height: 20),
                     AppKitModalConnectButton(
                       appKit: _appKitModal!,
-                      state: (_isConnected ?? false)
-                          ? ConnectButtonState.connected
-                          : ConnectButtonState.disabled,
+                      state: ConnectButtonState.connecting, // 🟠 لا تستخدم disabled
                     ),
                   ],
                 ),
