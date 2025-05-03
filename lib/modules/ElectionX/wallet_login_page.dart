@@ -15,6 +15,7 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   ReownAppKitModal? _appKitModal;
   Timer? _connectionTimer;
   bool _snackShown = false;
+  bool _isConnected = false;
 
   @override
   void initState() {
@@ -23,52 +24,35 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   }
 
   Future<void> _initializeAppKit() async {
-    final appKitModal = ReownAppKitModal(
-      context: context,
-      appKit: widget.appKit,
-    );
-
-    await appKitModal.init();
-
-    setState(() {
-      _appKitModal = appKitModal;
-    });
-
+    final modal = ReownAppKitModal(context: context, appKit: widget.appKit);
+    await modal.init();
+    setState(() => _appKitModal = modal);
     _startConnectionCheck();
   }
 
   void _startConnectionCheck() {
-    _connectionTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      _checkConnection();
-    });
+    _connectionTimer = Timer.periodic(const Duration(seconds: 2), (_) => _checkConnection());
   }
 
   Future<void> _checkConnection() async {
-    if (_appKitModal == null) return;
+    final modal = _appKitModal;
+    if (modal == null) return;
 
-    final isConnected = await _appKitModal!.isConnected;
+    final connected = await modal.isConnected;
+    setState(() => _isConnected = connected);
 
-    if (isConnected &&
-        _appKitModal!.session != null &&
-        _appKitModal!.selectedChain != null) {
+    if (connected && modal.session != null && modal.selectedChain != null) {
       _connectionTimer?.cancel();
-
-      // لا تكرر التنقل لو كان قد تم
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => Homescreen(appKitModal: _appKitModal!),
-          ),
+          MaterialPageRoute(builder: (_) => Homescreen(appKitModal: modal)),
         );
       }
-    } else {
-      if (!_snackShown && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ المحفظة غير متصلة بشكل صحيح')),
-        );
-        _snackShown = true;
-      }
+    } else if (!_snackShown && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('❌ المحفظة غير متصلة بشكل صحيح')));
+      _snackShown = true;
     }
   }
 
@@ -81,16 +65,20 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final modal = _appKitModal;
+    if (modal == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.orange),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: _appKitModal == null
-            ? const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-          ),
-        )
-            : Column(
+        child: Column(
           children: [
             const SizedBox(height: 24),
             Center(
@@ -128,8 +116,8 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
                     ),
                     const SizedBox(height: 20),
                     AppKitModalConnectButton(
-                      appKit: _appKitModal!,
-                      state: ConnectButtonState.idle, // ✅ حالة مناسبة للاتصال
+                      appKit: modal,
+                      state:  ConnectButtonState.connecting,
                     ),
                   ],
                 ),
