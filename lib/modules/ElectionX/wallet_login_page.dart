@@ -23,12 +23,9 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   }
 
   Future<void> _initializeAppKit() async {
-    final appKit = widget.appKit;
-    ReownAppKitModalNetworks.removeSupportedNetworks('solana');
     final appKitModal = ReownAppKitModal(
       context: context,
-      appKit: appKit,
-
+      appKit: widget.appKit,
     );
 
     await appKitModal.init();
@@ -56,15 +53,17 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
         _appKitModal!.selectedChain != null) {
       _connectionTimer?.cancel();
 
-      // تنقّل بعد الاتصال
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Homescreen(appKitModal: _appKitModal!),
-        ),
-      );
+      // لا تكرر التنقل لو كان قد تم
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Homescreen(appKitModal: _appKitModal!),
+          ),
+        );
+      }
     } else {
-      if (!_snackShown) {
+      if (!_snackShown && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('❌ المحفظة غير متصلة بشكل صحيح')),
         );
@@ -82,21 +81,16 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_appKitModal == null) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
+        child: _appKitModal == null
+            ? const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+          ),
+        )
+            : Column(
           children: [
             const SizedBox(height: 24),
             Center(
@@ -135,7 +129,7 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
                     const SizedBox(height: 20),
                     AppKitModalConnectButton(
                       appKit: _appKitModal!,
-                      state: ConnectButtonState.connecting, // 🟠 لا تستخدم disabled
+                      state: ConnectButtonState.idle, // ✅ حالة مناسبة للاتصال
                     ),
                   ],
                 ),
