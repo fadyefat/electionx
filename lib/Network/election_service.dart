@@ -14,7 +14,6 @@ class ElectionService {
   // Contract functions
   late ContractFunction _addCandidate;
   late ContractFunction _getAllCandidateNames;
-  late ContractFunction _getNumOfVoting;
   late ContractFunction _owner;
   late ContractFunction _voting;
   late ContractFunction _result;
@@ -37,7 +36,6 @@ class ElectionService {
 
     _addCandidate = _contract.function("AddConduation");
     _getAllCandidateNames = _contract.function("getAllCandidateNames");
-    _getNumOfVoting = _contract.function("get_NumOfVoting");
     _owner = _contract.function("owner");
     _voting = _contract.function("voting");
     _result = _contract.function("result");
@@ -51,21 +49,15 @@ class ElectionService {
       params: [],
     );
 
-    final votes = await _client.call(
-      contract: _contract,
-      function: _getNumOfVoting,
-      params: [],
-    );
 
     final nameList = (names[0] as List).map((e) => e.toString()).toList();
-    final voteList = (votes[0] as List).map((e) => BigInt.parse(e.toString()).toInt()).toList();
+
 
     List<Map<String, dynamic>> candidates = [];
 
     for (int i = 0; i < nameList.length; i++) {
       candidates.add({
         'name': nameList[i],
-        'votes': voteList[i],
       });
     }
 
@@ -73,15 +65,7 @@ class ElectionService {
   }
 
   // ✅ جلب عدد الأصوات فقط (لو أردت عرضهم مستقبلاً بشكل منفصل)
-  Future<List<int>> getNumOfVotes() async {
-    final votes = await _client.call(
-      contract: _contract,
-      function: _getNumOfVoting,
-      params: [],
-    );
 
-    return (votes[0] as List).map((e) => BigInt.parse(e.toString()).toInt()).toList();
-  }
 
   // ✅ جلب العنوان الحالي من الجلسة
   Future<EthereumAddress> getCurrentAddress(ReownAppKitModal modal) async {
