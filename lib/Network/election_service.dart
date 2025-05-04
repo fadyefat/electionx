@@ -100,28 +100,48 @@ class ElectionService {
 
   // ✅ إضافة مرشح جديد (فقط من الـ owner - يتحقق العقد من الصلاحية)
   Future<String> addCandidate(EthereumAddress candidateAddress, String name, ReownAppKitModal modal) async {
+    print("🚀 Starting addCandidate...");
+
+    // التحقق من الجلسة والسلسلة
     final session = modal.session;
     final selectedChain = modal.selectedChain;
 
-    if (session == null || selectedChain == null) {
-      throw Exception("Session or chain not initialized.");
+    if (session == null) {
+      print("❌ Error: session is null");
+      throw Exception("Session not initialized. Did you call connectWallet?");
     }
 
+    if (selectedChain == null) {
+      print("❌ Error: selectedChain is null");
+      throw Exception("Chain not selected. Did you select a chain?");
+    }
+
+    print("✅ Session and Chain are initialized");
+
+    // التحقق من namespace والعنوان
     final namespace = ReownAppKitModalNetworks.getNamespaceForChainId(selectedChain.chainId);
     final from = session.getAddress(namespace);
 
     if (from == null) {
+      print("❌ Error: no address found in session");
       throw Exception("No address found in session.");
     }
 
-    print("📤 Preparing AddConduation Transaction");
-    print("🧾 Candidate Address: ${candidateAddress.hex}");
-    print("🧾 Candidate Name: $name");
-    print("📤 Sending from: $from to: ${_contractAddress.hex}");
+    print("📤 Preparing transaction from: $from");
+    print("📍 To contract: ${_contractAddress.hex}");
+    print("👤 Candidate: ${candidateAddress.hex}, Name: $name");
 
     final data = _client.encodeFunctionCall(_addCandidate, [candidateAddress, name]);
 
+    // إضافة شرط لتأكيد chainId = Sepolia
+    if (selectedChain.chainId != 'eip155:11155111') {
+      print("❌ Error: You are not connected to Sepolia chain.");
+      throw Exception("Wrong network. Please connect to Sepolia.");
+    }
+
     try {
+      print("🦊 Requesting signature from MetaMask...");
+
       final response = await modal.request(
         topic: session.topic,
         chainId: selectedChain.chainId,
@@ -136,15 +156,14 @@ class ElectionService {
           ],
         ),
       );
-      print("✅ Transaction Hash: $response");
+
+      print("✅ Transaction sent successfully! Hash: $response");
       return response as String;
     } catch (e) {
       print("❌ Transaction Error: $e");
       rethrow;
     }
-
   }
-
   // ✅ تنفيذ تصويت لصالح مرشح معين
   Future<String> vote(String candidateName, ReownAppKitModal modal) async {
     final session = modal.session;

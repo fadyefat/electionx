@@ -65,41 +65,49 @@ class _HomescreenState extends State<Homescreen> {
       });
     }
   }
+
+
+  Future<void> _ensureModalInitialized() async {
+    if (_appKitModal == null) {
+      final modal = ReownAppKitModal(context: context, appKit: widget.appKitModal.appKit!);
+      await modal.init();
+      setState(() => _appKitModal = modal);
+    }
+  }
+
+
   void addVoter(String walletAddress, String name) async {
     try {
-      // ✅ تأكد إن المحفظة متصلة
-      final isConnected = await _appKitModal.isConnected;
+      // ✅ تهيئة المودال إذا مش متعرف
+      await _ensureModalInitialized();
+
+      final isConnected = await _appKitModal!.isConnected;
       if (!isConnected) {
-        await _appKitModal.appKit!.connect();
+        await _appKitModal!.appKit!.connect();
         print("🔗 Wallet connection requested...");
       }
 
-// طباعة الجلسة بعد الاتصال
-      print("🪪 Session: ${_appKitModal.session}");
-      print("🌐 SelectedChain: ${_appKitModal.selectedChain}");
+      print("🪪 Session: ${_appKitModal!.session}");
+      print("🌐 SelectedChain: ${_appKitModal!.selectedChain}");
+      print("👤 Current User Address: $_currentUser");
 
-
-      print("Current User Address: $_currentUser");
       // ✅ تنفيذ المعاملة
-
       final txHash = await _electionService.addCandidate(
         EthereumAddress.fromHex(walletAddress),
         name,
-
-        _appKitModal,
+        _appKitModal!,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ Candidate added. Tx: $txHash')),
+        SnackBar(content: Text('✅ تم إضافة المرشح. Tx: $txHash')),
       );
 
-      // ✅ تحديث القائمة
       final updated = await _electionService.getAllCandidates();
       setState(() => voters = updated);
     } catch (e) {
       print("Error: Failed to add candidate: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Failed to add candidate: $e')),
+        SnackBar(content: Text('❌ فشل في إضافة المرشح: $e')),
       );
     }
   }

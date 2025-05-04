@@ -49,10 +49,6 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
           MaterialPageRoute(builder: (_) => Homescreen(appKitModal: modal)),
         );
       }
-    } else if (!_snackShown && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('❌ المحفظة غير متصلة بشكل صحيح')));
-      _snackShown = true;
     }
   }
 
