@@ -4,7 +4,6 @@ import '../../Network/election_service.dart';
 import 'ResultScreen.dart';
 import 'wallet_login_page.dart';
 import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart';
 
 
 
@@ -213,9 +212,15 @@ class _HomescreenState extends State<Homescreen> {
   void showResults() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => ResultScreen(voters: voters)),
+      MaterialPageRoute(
+        builder: (context) => ResultScreen(
+          modal: _appKitModal,
+          electionService: _electionService,
+        ),
+      ),
     );
   }
+
 
   void goToWalletConnect() {
     if (widget.appKitModal.appKit != null) {

@@ -4,7 +4,6 @@ import 'package:reown_appkit/modal/appkit_modal_impl.dart';
 import 'package:reown_appkit/reown_appkit.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:web3dart/crypto.dart';
-import 'dart:convert';
 
 
 class ElectionService {
@@ -43,6 +42,16 @@ class ElectionService {
     _result = _contract.function("result");
   }
 
+  Future<String> readResult() async {
+    // This will perform a call (no signature) to result(),
+    // and will revert if voting not ended or caller ≠ owner.
+    final response = await _client.call(
+      contract: _contract,
+      function: _result,
+      params: [],
+    );
+    return response.first as String;
+  }
   // ✅ جلب كل أسماء المرشحين وعدد أصواتهم
   Future<List<Map<String, dynamic>>> getAllCandidates() async {
     final names = await _client.call(
