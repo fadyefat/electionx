@@ -38,7 +38,7 @@ class _ResultScreenState extends State<ResultScreen> {
 
     if (_isOwner) {
       try {
-        _result = await widget.electionService.readResult();
+        _result = await widget.electionService.getResult(widget.modal);
       } catch (e) {
         // Voting still ongoing or revert
         _result = 'Voting is still ongoing.';
@@ -64,7 +64,7 @@ class _ResultScreenState extends State<ResultScreen> {
         appBar: AppBar(title: const Text('Results')),
         body: const Center(
           child: Text(
-            '⛔️ النتائج متاحة للمالك فقط حالياً.',
+            '⛔️ Owner onlyً.',
             style: TextStyle(color: Colors.white),
           ),
         ),

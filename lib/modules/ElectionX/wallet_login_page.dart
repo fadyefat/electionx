@@ -14,7 +14,7 @@ class WalletLoginPage extends StatefulWidget {
 class _WalletLoginPageState extends State<WalletLoginPage> {
   ReownAppKitModal? _appKitModal;
   Timer? _connectionTimer;
-  bool _snackShown = false;
+  bool _hasInitialized = false; // ← علمية لمنع التهيئة المكررة
   bool _isConnected = false;
 
   @override
@@ -24,12 +24,24 @@ class _WalletLoginPageState extends State<WalletLoginPage> {
   }
 
   Future<void> _initializeAppKit() async {
-    final modal = ReownAppKitModal(context: context, appKit: widget.appKit);
-    await modal.init();
-    setState(() => _appKitModal = modal);
+    if (_hasInitialized) return;     // ← إذا جهزناه من قبل، لا نفعل مرة ثانية
+    _hasInitialized = true;
+
+    // لا تعيد إنشاء instance من ReownAppKit، استخدم الـ appKit المرسل من main.dart
+    final appKit = widget.appKit;
+    final modal = ReownAppKitModal(
+      context: context,
+      appKit: appKit,
+    );
+
+    await modal.init();              // ← تُهيئ مرة واحدة فقط
+    setState(() {
+      _appKitModal = modal;
+    });
+
+    // باقي الكود: start checking, timer, إلخ...
     _startConnectionCheck();
   }
-
   void _startConnectionCheck() {
     _connectionTimer = Timer.periodic(const Duration(seconds: 2), (_) => _checkConnection());
   }
