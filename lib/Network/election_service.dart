@@ -28,7 +28,7 @@ class ElectionService {
 
   Future<void> init() async {
     _abiCode = await rootBundle.loadString('assets/Election.json');
-    _contractAddress = EthereumAddress.fromHex("0xD6845950A6E98Df3d2fC6Ff94eDcC4D4794ACCC9");
+    _contractAddress = EthereumAddress.fromHex("0xedd570713a1C266A08DA040483cD54E3D84d554d");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abiCode, "Election"),
