@@ -29,6 +29,8 @@ flutter_icons:
   image_path: "assets/ChatGPT Image May 8, 2025, 11_12_26 PM.png"
 
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
 
 
 flutter:
@@ -38,3 +40,4 @@ flutter:
   assets:
     - assets/MetaMask_Fox.svg.png
     - assets/Election.json
+

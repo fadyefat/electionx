@@ -28,7 +28,7 @@ class ElectionService {
 
   Future<void> init() async {
     _abiCode = await rootBundle.loadString('assets/Election.json');
-    _contractAddress = EthereumAddress.fromHex("0x2046f08936Eb60DB5fce4bB6DcE34dEED84480a0");
+    _contractAddress = EthereumAddress.fromHex("0xD6845950A6E98Df3d2fC6Ff94eDcC4D4794ACCC9");
 
     _contract = DeployedContract(
       ContractAbi.fromJson(_abiCode, "Election"),
@@ -39,7 +39,7 @@ class ElectionService {
     _getAllCandidateNames = _contract.function("getAllCandidateNames");
     _owner = _contract.function("owner");
     _voting = _contract.function("voting");
-    _result = _contract.function("result");
+    _result = _contract.function("getResult");
   }
 
   Future<String> readResult() async {
@@ -208,6 +208,8 @@ class ElectionService {
 
   // ✅ جلب نتائج التصويت (حسب دالة result في العقد)
   Future<String> getResult(ReownAppKitModal modal) async {
+    await init(); // تأكد إن init بيحمل abi ويجهز contract
+
     final session = modal.session;
     final selectedChain = modal.selectedChain;
 
@@ -219,25 +221,16 @@ class ElectionService {
     final from = session.getAddress(namespace);
     if (from == null) throw Exception("No address found in session.");
 
-    final data = _client.encodeFunctionCall(_result, []);
+    final getResultFunction = _contract.function('getResult');
 
-    final response = await modal.request(
-      topic: session.topic,
-      chainId: selectedChain.chainId,
-      request: SessionRequestParams(
-        method: 'eth_call',
-        params: [
-          {
-            'from': from,
-            'to': _contractAddress.hex,
-            'data': data,
-          },
-          "latest"
-        ],
-      ),
+    final result = await _client.call(
+      contract: _contract,
+      function: getResultFunction,
+      params: [],
+      sender: EthereumAddress.fromHex(from),
     );
 
-    return response.toString();
+    return result.first as String;
   }
 }
 

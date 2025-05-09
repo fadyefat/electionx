@@ -28,7 +28,10 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _loadResults() async {
+    setState(() => _isLoading = true);
+
     await widget.electionService.init();
+
     final current = await widget.electionService.getCurrentAddress(widget.modal);
     final owner = await widget.electionService.getOwner();
 
@@ -38,11 +41,13 @@ class _ResultScreenState extends State<ResultScreen> {
 
     if (_isOwner) {
       try {
-        _result = await widget.electionService.getResult(widget.modal);
+        final result = await widget.electionService.getResult(widget.modal);
+        setState(() => _result = result);
       } catch (e) {
-        // Voting still ongoing or revert
-        _result = 'Voting is still ongoing.';
+        setState(() => _result = 'Voting is still ongoing.');
       }
+    } else {
+      setState(() => _result = 'Only the owner can view the results.');
     }
 
     setState(() => _isLoading = false);
