@@ -16,6 +16,7 @@ A decentralized voting app built with Flutter and Solidity, featuring a secure a
   - `Elections.sol`: Manages candidates, voting logic, and result computation
   - Includes `onlyOwner` and `votingOpen` modifiers
   - Automatically calculates the winner after the set voting duration
+  - https://gist.github.com/fadyefat/9a9c69088d0d9e55e32a2a7daa38a4cc (SmartContract)
 - **Front-end (Flutter/Dart)**
   - Cross-platform support (iOS, Android, Web, Desktop)
   - Connects to Ethereum wallets for voting and candidate actions
