@@ -1,93 +1,46 @@
-<<<<<<< HEAD
-# election
+# ElectionX 🗳️
 
-A new Flutter project with smart contract
+A decentralized voting app built with Flutter and Solidity, featuring a secure and transparent election system.
 
-##smart contract
-// SPDX-License-Identifier: MIT
-pragma solidity >=0.7.0 <0.9.0;
+---
 
-contract Elections{
+## 🚀 Project Overview
 
-    address public owner ;
-    mapping (address=>string) private addcandidate;
-    string[]  private  candidateNames;
-    uint256[]  private  candidateNam ;
-    uint256 private endTime; // add varible to end time
-    uint256 private max = 0;
-    uint256 private winnerIndex = 0;
-    mapping (address => bool) private hasVoted;
+**ElectionX** enables users to participate in tamper-proof voting through a mobile interface powered by blockchain smart contracts. Voters cast their vote using a connected wallet, and only the designated owner can add candidates and view results after voting ends. The system guarantees vote integrity and privacy by leveraging the decentralized nature of Ethereum.
 
-    constructor (uint256 _duration) // add prameters take time
-    { 
-        owner = msg.sender;
-        endTime = block.timestamp + _duration; // caculate time
-       
-    }
-    
-    modifier onlyOwner()
-    { 
-        require (msg.sender == owner,"Only the owner can perform this action");
-        _;
-    }
+---
 
-     modifier votingOpen()  //add moddifier to end time
-     {
-        require(block.timestamp < endTime, "Voting has ended");
-        _;
-    }
-    
-    function AddConduation(address _candidate,string memory _name) public onlyOwner
-    {
-        require (_candidate != address(0),"address cannot be null");
-        require(bytes(addcandidate[_candidate]).length == 0, "Candidate already exists");
+## 🛠️ Tech Stack & Key Features
 
-        addcandidate[_candidate] = _name;
-        candidateNames.push(_name);
-        candidateNam.push(0);
-        
-    }
+- **Smart Contracts (Solidity)**
+  - `Elections.sol`: Manages candidates, voting logic, and result computation
+  - Includes `onlyOwner` and `votingOpen` modifiers
+  - Automatically calculates the winner after the set voting duration
+- **Front-end (Flutter/Dart)**
+  - Cross-platform support (iOS, Android, Web, Desktop)
+  - Connects to Ethereum wallets for voting and candidate actions
+- **Wallet Integration / Web3**
+  - Enables users to connect wallets and authenticate their votes
+- **Time-bound Voting**
+  - Voting closes automatically based on the duration set in the contract
+- **Candidate Management**
+  - Only the contract owner can register candidates
 
-     function getAllCandidateNames() public view returns (string[] memory) {
-        return candidateNames;
-    }
+---
 
-    function voting(string  memory _nam)   public votingOpen   // add mdifier in function
-    {
-        require(!hasVoted[msg.sender], "You have already voted");
-        for(uint256  i = 0 ; i < candidateNames.length ;i++)
-        {
-            if(keccak256(abi.encodePacked(candidateNames[i])) == keccak256(abi.encodePacked(_nam)))
-            {
-                candidateNam[i]+= 1;
-                hasVoted[msg.sender] = true;
-                return;
-            }
-          
+## 🧩 Role & Responsibilities
 
-        }
-         revert("Candidate not found"); 
-    }
+As the **Blockchain & Mobile Developer**, I:
+- Implemented the Solidity smart contract for elections
+- Developed the Flutter interface to interact with the contract
+- Integrated wallet connectivity and transaction handling
+- Tested the end-to-end voting flow and result display logic
 
-    function get_NumOfVoting() public  view onlyOwner  returns (uint256[] memory) {
-        return candidateNam;
-    }
+---
 
-    
-    function result ()public onlyOwner returns (string memory) // add moddifier to function
-    { 
-        require(block.timestamp >= endTime, "Voting is still ongoing");
-       for (uint256 i = 0 ;i <candidateNames.length; i++)
-        {
-            if (candidateNam[i] > max) 
-            {   
-                max = candidateNam[i];
-                winnerIndex = i;
-            }
-            
-        }
-         return string(abi.encodePacked("The winner is: ", candidateNames[winnerIndex])); 
-    }
+## 🎯 Getting Started
 
-}
-
+Cloning the project:
+```bash
+git clone https://github.com/fadyefat/electionx.git
+cd electionx
